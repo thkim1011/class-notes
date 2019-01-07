@@ -24,8 +24,20 @@ before I program this.
 import sys
 import os
 from collections import OrderedDict
+from googleapiclient.discovery import build
+from httplib2 import Http
+from oauth2client import file, client, tools
 
 VERSION = 0.1
+SCOPES = 'http://www.googleapis.com/auth/drive.file'
+
+def get_drive():
+    store = file.Storage('.notes/token.json')
+    creds = store.get()
+    if not creds or creds.invalid:
+        flow = client.flow_from_clientsecrets('credentials.json', SCOPES)
+        creds = tools.run_flow(flow, store)
+    return build('drive', 'v3', http=creds.authorize(Http()))
 
 def init():
     """
@@ -65,6 +77,16 @@ def init():
         print("Notes already exist in this project!")
         return
     os.mkdir('.notes')
+
+    drive = get_drive()
+    # Create notes directory in google drive
+    metadata = {
+        'name': os.path.basename(os.getcwd()),
+        'mimeType': 'application/vnd.google-apps.folder'
+    }
+    parent = drive.files().create(body=metadata, field='id').execute()
+    print(parent)
+    print('Folder ID {0}'.format(parent.get('id')))
 
 def import_notes():
     """
@@ -123,6 +145,7 @@ def main():
     Main function for the module. The module has three
     primary functions.
     """
+
     if len(sys.argv) == 1:
         help()
     elif len(sys.argv) > 2:
